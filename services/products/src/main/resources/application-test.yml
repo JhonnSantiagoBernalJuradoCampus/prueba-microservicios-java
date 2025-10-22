@@ -1,1 +1,11 @@
-spring:\n  datasource:\n    url: jdbc:h2:mem:products_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE\n    driver-class-name: org.h2.Driver\n    username: sa\n    password: \n  jpa:\n    hibernate:\n      ddl-auto: create-drop\n    properties:\n      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect\n
+spring:
+  datasource:
+    url: jdbc:h2:mem:products_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
