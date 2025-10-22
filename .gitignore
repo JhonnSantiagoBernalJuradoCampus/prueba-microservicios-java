@@ -20,8 +20,3 @@ Thumbs.db
 
 # Java
 *.class
-
-# Others
-/node_modules/
-/.env
-
