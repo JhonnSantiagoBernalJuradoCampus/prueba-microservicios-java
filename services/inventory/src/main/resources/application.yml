@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: inventory
+  profiles:
+    default: dev
+server:
+  port: 8082
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
