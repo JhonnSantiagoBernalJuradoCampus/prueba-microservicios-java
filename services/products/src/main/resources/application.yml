@@ -1,0 +1,1 @@
+spring:\n  application:\n    name: products\n  profiles:\n    default: dev\nserver:\n  port: 8081\nmanagement:\n  endpoints:\n    web:\n      exposure:\n        include: health,info\n
