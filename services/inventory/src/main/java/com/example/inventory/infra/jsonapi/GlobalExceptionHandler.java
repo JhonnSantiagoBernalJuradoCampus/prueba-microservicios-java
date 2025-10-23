@@ -17,19 +17,19 @@ public class GlobalExceptionHandler {
     List<JsonApiError> errors = ex.getBindingResult().getFieldErrors().stream()
       .map(this::toJsonApiError)
       .toList();
-    return ResponseEntity.unprocessableEntity().body(new Object() { public List<JsonApiError> errors(){ return errors; } });
+    return ResponseEntity.unprocessableEntity().body(new ErrorsResponse(errors));
   }
 
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<?> handleNotFound(ResourceNotFoundException ex) {
     JsonApiError error = new JsonApiError(String.valueOf(HttpStatus.NOT_FOUND.value()), "Not Found", ex.getMessage());
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Object() { public List<JsonApiError> errors(){ return List.of(error); } });
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorsResponse(List.of(error)));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
     JsonApiError error = new JsonApiError(String.valueOf(HttpStatus.BAD_REQUEST.value()), "Bad Request", ex.getMessage());
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Object() { public List<JsonApiError> errors(){ return List.of(error); } });
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorsResponse(List.of(error)));
   }
 
   private JsonApiError toJsonApiError(FieldError fe) {
