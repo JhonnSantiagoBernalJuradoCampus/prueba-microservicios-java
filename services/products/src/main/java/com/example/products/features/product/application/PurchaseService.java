@@ -6,6 +6,7 @@ import com.example.products.features.product.api.dto.PurchaseResponse;
 import com.example.products.features.product.api.dto.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 
 @Service
 public class PurchaseService {
@@ -25,7 +26,8 @@ public class PurchaseService {
     PurchaseResponse resp = new PurchaseResponse();
     resp.setProductId(product.getId());
     resp.setQuantity(attributes.getQuantity());
-    resp.setTotalPrice(product.getPrice() * attributes.getQuantity());
+    BigDecimal total = product.getPrice().multiply(BigDecimal.valueOf(attributes.getQuantity()));
+    resp.setTotalPrice(total.doubleValue());
     return resp;
   }
 }
