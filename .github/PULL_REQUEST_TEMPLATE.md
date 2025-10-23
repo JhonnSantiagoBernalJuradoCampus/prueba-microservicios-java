@@ -1,1 +1,0 @@
-## Descripción\n\n## Checklist\n- [ ] Respuestas cumplen JSON:API\n- [ ] Tests pasan y cobertura OK\n- [ ] OpenAPI/Swagger actualizado\n- [ ] Manejo de errores consistente\n- [ ] README/Docs actualizados\n\n## Tipo de cambio\n- [ ] feat\n- [ ] fix\n- [ ] chore\n- [ ] docs\n- [ ] test\n- [ ] refactor\n

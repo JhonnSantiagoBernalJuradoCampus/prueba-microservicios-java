@@ -12,9 +12,14 @@ server:
   port: 8081
 springdoc:
   api-docs:
-    enabled: false
+    enabled: true
   swagger-ui:
-    enabled: false
+    enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
 security:
   api-key:
     enabled: ${API_KEY_ENABLED:true}
