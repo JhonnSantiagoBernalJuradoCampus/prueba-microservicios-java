@@ -45,6 +45,27 @@ public class InventoryService {
     InventoryItem saved = inventoryRepository.save(item);
     return inventoryMapper.toDto(saved);
   }
+
+  @Transactional
+  public InventoryDto decrement(String productId, int amount) {
+    if (amount <= 0) {
+      return getByProductId(productId); // sin cambios si amount inválido
+    }
+    InventoryItem item = inventoryRepository.findById(productId)
+      .orElseGet(() -> {
+        InventoryItem created = new InventoryItem();
+        created.setProductId(productId);
+        created.setQuantity(0);
+        return created;
+      });
+    int current = item.getQuantity() == null ? 0 : item.getQuantity();
+    if (current < amount) {
+      throw new IllegalArgumentException("Insufficient stock");
+    }
+    item.setQuantity(current - amount);
+    InventoryItem saved = inventoryRepository.save(item);
+    return inventoryMapper.toDto(saved);
+  }
 }
 
 
