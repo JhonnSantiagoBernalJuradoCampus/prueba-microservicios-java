@@ -20,3 +20,8 @@ security:
     enabled: ${API_KEY_ENABLED:true}
     header: ${API_KEY_HEADER:X-API-Key}
     value: ${API_KEY_VALUE:prod-secret}
+inventory:
+  base-url: ${INVENTORY_BASE_URL:http://inventory:8082}
+  api-key:
+    header: ${INVENTORY_API_KEY_HEADER:X-API-Key}
+    value: ${INVENTORY_API_KEY_VALUE:prod-secret}
