@@ -26,6 +26,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Object() { public List<JsonApiError> errors(){ return List.of(error); } });
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
+    JsonApiError error = new JsonApiError(String.valueOf(HttpStatus.BAD_REQUEST.value()), "Bad Request", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Object() { public List<JsonApiError> errors(){ return List.of(error); } });
+  }
+
   private JsonApiError toJsonApiError(FieldError fe) {
     String detail = fe.getField() + " " + fe.getDefaultMessage();
     return new JsonApiError("422", "Validation Error", detail);
