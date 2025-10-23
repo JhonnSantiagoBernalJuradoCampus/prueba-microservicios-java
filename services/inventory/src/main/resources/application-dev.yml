@@ -12,3 +12,8 @@ spring:
 logging:
   level:
     org.springframework: INFO
+security:
+  api-key:
+    enabled: true
+    header: X-API-Key
+    value: dev-secret
