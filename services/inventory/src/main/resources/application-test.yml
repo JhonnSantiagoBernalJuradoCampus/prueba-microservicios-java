@@ -9,3 +9,6 @@ spring:
       ddl-auto: create-drop
     properties:
       hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+security:
+  api-key:
+    enabled: false
