@@ -32,6 +32,13 @@ public class InventoryController {
     InventoryDto updated = inventoryService.setQuantity(productId, body.getData().getAttributes());
     return ResponseEntity.ok(new JsonApiResponse<>(new JsonApiData<>("inventory", updated.getProductId(), updated)));
   }
+
+  @PatchMapping("/{productId}/decrement")
+  public ResponseEntity<JsonApiResponse<InventoryDto>> decrement(@PathVariable String productId,
+                                                                 @RequestParam("amount") int amount) {
+    InventoryDto updated = inventoryService.decrement(productId, amount);
+    return ResponseEntity.ok(new JsonApiResponse<>(new JsonApiData<>("inventory", updated.getProductId(), updated)));
+  }
 }
 
 
