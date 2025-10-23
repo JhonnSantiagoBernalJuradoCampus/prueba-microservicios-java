@@ -14,7 +14,7 @@ services:
       - dbdata:/var/lib/postgresql/data
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,7 +63,7 @@ services:
       - ./:/workspace
       - m2:/root/.m2
     entrypoint: ["sh", "-c"]
-    command: ["mvn -q -e -Dspring.profiles.active=test -pl services/products,services/inventory -am test"]
+    command: ["mvn -q -e -f services/products/pom.xml -Dspring.profiles.active=test test && mvn -q -e -f services/inventory/pom.xml -Dspring.profiles.active=test test"]
 
 volumes:
   dbdata:
