@@ -1,106 +1,149 @@
-## Prueba Técnica – Microservicios Products e Inventory (Java / Spring Boot)
+# Catálogo y inventario — microservicios en Java / Spring Boot
 
+Sistema de catálogo de productos e inventario con un flujo de compra orquestado entre dos microservicios independientes. Cada servicio tiene su propia base de datos, API REST en JSON:API, autenticación por API Key y despliegue reproducible con Docker.
 
+Es un proyecto de backend pensado para mostrar arquitectura de microservicios, límites de dominio claros y patrones de diseño aplicados en Java 21 y Spring Boot 3.
 
+## Stack
 
-### Decisiones técnicas y justificación del endpoint de compra
-- ¿Dónde vive el endpoint de compra? En `products`.
-  - Responsabilidad y experiencia de cliente: la compra es un caso de uso del dominio de productos; `products` orquesta la operación y expone la API al cliente.
-  - Bajo acoplamiento y foco en inventario: `inventory` se mantiene como servicio de estado de stock con operaciones atómicas (get, set, decrement), sin lógica de orquestación de negocio.
-  - Consistencia y simplicidad: el flujo hace 1) validar existencia del producto en `products`, 2) decrementar stock en `inventory` de forma atómica, 3) responder con JSON:API con totales. Si no hay stock suficiente, `inventory` responde 400 y `products` lo propaga tal cual.
-  - Evolución futura: `products` es el punto natural para añadir idempotencia (p.ej., cabecera Idempotency-Key), reintentos compensados y antifraude sin contaminar la lógica de `inventory`.
+| Área | Tecnología |
+| --- | --- |
+| Lenguaje y runtime | Java 21 |
+| Framework | Spring Boot 3.5 (Web, Data JPA, Validation, Actuator) |
+| Persistencia | PostgreSQL 16 (H2 en tests) |
+| Mapeo | MapStruct, Lombok |
+| API | JSON:API, OpenAPI / Swagger (springdoc) |
+| Comunicación | HTTP con `RestClient` |
+| Contenedores | Docker, Docker Compose (imágenes multi-stage Maven + JRE) |
 
-- Manejo de errores (JSON:API):
-  - 404 Not Found: producto inexistente (validado en `products`).
-  - 400 Bad Request: stock insuficiente (emitido por `inventory` y propagado por `products`).
-  - 422 Unprocessable Entity: validaciones de payload.
-  - Todos devuelven cuerpo JSON:API consistente.
+## Arquitectura
 
-- Comunicación y seguridad:
-  - HTTP JSON:API entre servicios usando `RestClient`.
-  - API Key vía cabecera configurable por perfil/entorno.
-  - Timeouts y reintentos básicos configurables; se evita reintentar compras sin idempotencia para no duplicar operaciones.
+Dos servicios con **database per service**: comparten la misma instancia de PostgreSQL en Docker, pero bases distintas (`products_db` e `inventory_db`).
 
-- Base de datos: SQL (PostgreSQL)
-  - Justificación: modelo relacional claro (productos–inventario), integridad referencial, transacciones y consultas maduras. En este alcance NoSQL no aporta ventaja.
-  - Cada microservicio apunta a la misma instancia de PostgreSQL en Docker, con bases separadas (`products_db` e `inventory_db`).
-- **Swagger**: habilitado en contenedores para facilitar pruebas manuales.
-### Requisitos previos
-- Docker y Docker Compose v2 instalados
-
-### Instalación y ejecución (100% Docker)
-1) Clonar el repositorio
-```bash
-git clone https://github.com/JhonnSantiagoBernalJuradoCampus/prueba-microservicios-java.git
-cd prueba-microservicios-java
 ```
-2) Construir imágenes e iniciar servicios
-```bash
-docker compose build
-docker compose up -d
-```
-3) Comprobar estado
-```bash
-docker compose ps
+Cliente  →  products (8081)  →  inventory (8082)
+                │                      │
+          products_db            inventory_db
 ```
 
-### Swagger
-- Products: `http://localhost:8081/swagger-ui/index.html`
-- Inventory: `http://localhost:8082/swagger-ui/index.html`
+- **products**: catálogo y caso de uso de compra. Valida que el producto exista, llama a inventario para descontar stock de forma atómica y responde con el total.
+- **inventory**: estado de stock. Solo operaciones de consulta, asignación y decremento; no orquesta negocio de compra.
 
-### Autenticación
-- Cabecera: `X-API-Key: prod-secret`
-
-### Acciones en Swagger (endpoints)
-- Products (Swagger UI de Products)
-  - Crear producto: POST `/products`
-  - Obtener producto: GET `/products/{id}`
-  - Listar productos: GET `/products`
-  - Comprar: POST `/purchase`
-- Inventory (Swagger UI de Inventory)
-  - Consultar cantidad: GET `/inventory/{productId}`
-  - Establecer cantidad: PATCH `/inventory/{productId}` (JSON:API body)
-  - Decrementar cantidad: PATCH `/inventory/{productId}/decrement?amount={n}`
-
-### Health
-- `http://localhost:8081/actuator/health`, `http://localhost:8082/actuator/health`
-
-### Variables de entorno (definidas en docker-compose.yml)
-- `products`: `DB_*`, `SECURITY_API_KEY_VALUE`, `INVENTORY_BASE_URL`, `INVENTORY_API_KEY_VALUE`
-- `inventory`: `DB_*`, `SECURITY_API_KEY_VALUE`
-
-### Diagramas
-
-#### Diagrama de Arquitectura
+La compra vive en `products` para mantener bajo acoplamiento: inventario no conoce precios ni el flujo comercial. Si el stock no alcanza, `inventory` responde 400 y `products` propaga el error JSON:API sin reinterpretarlo.
 
 ![Diagrama de Arquitectura](docs/Arquitectura.png)
 
-#### Diagrama del Flujo de Compra
-
 ![Diagrama del Flujo de Compra](docs/FlujoCompra.png)
 
-### Pruebas en Docker
+### Organización del código
+
+Cada microservicio sigue capas por feature (`features/<dominio>`) e infraestructura transversal (`infra`):
+
+- **api**: controladores, DTOs y contratos HTTP.
+- **application**: casos de uso (`ProductService`, `PurchaseService`, `InventoryService`).
+- **domain**: entidades y repositorios.
+- **infra**: seguridad, JSON:API, cliente HTTP, manejo global de errores.
+
+## Patrones de diseño
+
+| Patrón | Dónde se aplica |
+| --- | --- |
+| Arquitectura por capas + empaquetado por feature | `api` / `application` / `domain` / `infra` en cada servicio |
+| Database per service | Bases `products_db` e `inventory_db` |
+| Repository | Spring Data JPA (`ProductRepository`, `InventoryRepository`) |
+| DTO + Mapper | DTOs de API y MapStruct (`ProductMapper`, `InventoryMapper`) |
+| Service / Application service | Casos de uso transaccionales; `PurchaseService` orquesta producto + inventario |
+| API Gateway / Client (lado consumidor) | `InventoryClient` encapsula llamadas HTTP a inventario |
+| Dependency Injection | Inyección por constructor en servicios, controladores y cliente |
+| Filter (cadena de filtros servlet) | `ApiKeyFilter` (`OncePerRequestFilter`) valida `X-API-Key` |
+| Controller Advice | `GlobalExceptionHandler` unifica errores en JSON:API |
+| Configuration | Beans de `RestClient` con interceptor de API Key y timeouts implícitos de Spring |
+
+También se usan convenciones de Spring (perfiles `dev` / `prod` / `test`) y builds Docker multi-stage (compilación Maven + runtime JRE).
+
+## Contratos HTTP y errores
+
+Las respuestas siguen JSON:API (`data` / `errors`).
+
+| Código | Cuándo |
+| --- | --- |
+| 404 | Producto inexistente (validado en `products`) |
+| 400 | Stock insuficiente (emitido por `inventory` y reenviado por `products`) |
+| 422 | Validación de payload |
+| 401 | API Key ausente o inválida |
+
+No se reintentan compras automáticamente: sin idempotencia, un reintento podría descontar stock dos veces.
+
+## Requisitos
+
+- Docker y Docker Compose v2
+
+## Instalación y ejecución
+
 ```bash
-docker compose run --rm tests sh -c
+git clone https://github.com/bernalSantiago1/microservicios-java.git
+cd microservicios-java
+
+docker compose build
+docker compose up -d
+docker compose ps
 ```
-Ejecuta ahi mismo este comando
+
+## Swagger
+
+- Products: http://localhost:8081/swagger-ui/index.html
+- Inventory: http://localhost:8082/swagger-ui/index.html
+
+Cabecera de autenticación: `X-API-Key: prod-secret`
+
+### Endpoints
+
+**Products**
+
+- `POST /products` — crear producto
+- `GET /products/{id}` — obtener producto
+- `GET /products` — listar productos
+- `POST /purchase` — comprar (orquesta inventario)
+
+**Inventory**
+
+- `GET /inventory/{productId}` — consultar cantidad
+- `PATCH /inventory/{productId}` — establecer cantidad (cuerpo JSON:API)
+- `PATCH /inventory/{productId}/decrement?amount={n}` — decrementar
+
+**Health**
+
+- http://localhost:8081/actuator/health
+- http://localhost:8082/actuator/health
+
+## Variables de entorno
+
+Definidas en `docker-compose.yml` y leídas por los perfiles `prod`:
+
+- Ambos servicios: `SPRING_PROFILES_ACTIVE`, `DB_USERNAME`, `DB_PASSWORD`, `API_KEY_ENABLED`, `API_KEY_HEADER`, `API_KEY_VALUE`
+- `products` (opcional, con valores por defecto en `application-prod.yml`): `INVENTORY_BASE_URL`, `INVENTORY_API_KEY_HEADER`, `INVENTORY_API_KEY_VALUE`
+
+## Tests
+
+Unitarios e de integración por microservicio (perfil `test`, H2). Desde la raíz del repo, con Docker:
+
 ```bash
-mvn -B -Dspring.profiles.active=test -f services/products/pom.xml test && mvn -B -Dspring.profiles.active=test -f services/inventory/pom.xml test
+docker compose run --rm tests
 ```
-Ejecuta tests de `products` e `inventory` (perfil `test`).
 
+O con Maven local (Java 21):
 
+```bash
+mvn -B -Dspring.profiles.active=test -f services/products/pom.xml test
+mvn -B -Dspring.profiles.active=test -f services/inventory/pom.xml test
+```
 
+## Estructura del repositorio
 
-
-### Uso de herramientas de IA Cursor
-- Herramientas empleadas: asistente de IA para scaffolding de Spring Boot, generación de DTOs/MapStruct, envoltorios JSON:API, filtros de API Key y configuración Docker/Docker Compose.
-- Tareas aceleradas: creación de clases repetitivas (DTOs, mappers), configuración de dependencias, esqueletos de controladores/servicios y pruebas (MockMvc e integración).
-- Verificación de calidad del código generado:
-  - Pruebas unitarias y de integración por microservicio (también ejecutables dentro de Docker con el servicio `tests`).
-  - Validación manual con Swagger dentro de los contenedores (`/swagger-ui`).
-  - Revisión de cumplimiento JSON:API en `data`/`errors` 
-  - Construcción multi-stage y arranque con `docker compose up` para asegurar reproducibilidad.
-
-
-
+```
+├── docker-compose.yml
+├── docker/postgres/initdb/   # crea products_db e inventory_db
+├── docs/                     # diagramas de arquitectura y flujo de compra
+├── services/products/
+└── services/inventory/
+```
